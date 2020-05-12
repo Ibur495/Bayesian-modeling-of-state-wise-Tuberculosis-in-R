@@ -1,0 +1,249 @@
+---
+title: "Data analysis techniques for fraud detection"
+author: "IBUR RAHMAN"
+date: "4/3/2020"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+
+```{r,eval=FALSE}
+data<-read.csv("audit_risk.csv")
+library(FSelector)
+library(ROCR)
+library(pROC)
+
+names(data)
+dim(data)
+str(data)
+summary(data)
+sapply(data, function(x) sum(length(which(is.na(x))))) 
+
+library(dplyr)
+data2<-subset(data, select = c(-2))
+data2
+
+```
+# For information purifying we can utilize various types of techniques.data set is exceptionally spotless just I utilized code for information checking.
+
+# For fraudulent detection we can utilized diffrent sort of procedures. We can begin with summary statistics, inferential insights and feature engineering strategies befor going to execute machine learning model. I utilized just two feature engineering techinques to choose variable were correlation matrix and chi square test.
+
+```{r pressure,eval=FALSE}
+#Calculate the chi square statistics 
+Chi.data2<- chi.squared(Risk~., data2)
+
+# Print the results 
+print(Chi.data2)
+# Select top five variables
+subset<- cutoff.k(Chi.data2,10)
+# Print the final formula that can be used in classification
+f<- as.simple.formula(subset, "Risk")
+print(f)
+
+
+data3<-subset(data2,select=c("Risk","Score","Score_MV","Score_B","Score_A","CONTROL_RISK","RiSk_E",
+                             "District_Loss","Sector_score","Risk_A"))
+
+library(caTools)
+set.seed(123)
+as.factor(data3$Risk)
+sample = sample.split(data3,SplitRatio = 0.70) 
+train=subset(data3,sample ==TRUE)
+test=subset(data3, sample==FALSE)
+dim(test)
+
+glm<-glm(Risk~., family = "binomial",train)
+summary(glm)
+dim(test)
+
+log_predict <- predict(glm,test,type = "response")
+log_predict1 <- ifelse(log_predict > 0.5,1,0)
+
+table(log_predict1,test$Risk)
+
+roc_glm<-roc(test$Risk, log_predict)
+plot(roc_glm)
+
+plot(roc_glm, col = "blue")
+
+auc(roc_glm)
+#Accuracy 97.85%
+
+
+
+
+#Random forest
+library(randomForest)
+
+# probability estimation
+Rf<- randomForest(Risk~.,train)
+
+prob_rftrain<-predict(Rf,train)
+prob_rftest<-predict(Rf,test)
+table(prob_rftest>.5,test$Risk)
+
+roc_rf<-roc(test$Risk,prob_rftest)
+plot(roc_rf)
+
+plot(roc_rf, col = "blue")
+
+auc(roc_rf)
+
+#Accuracy 96.13%
+
+#SVM model with probability
+library(e1071)
+SVM_model<- svm(Risk~.,train, probability=TRUE)
+svm_train <- predict(SVM_model,train, probability=TRUE)
+head(svm_train)
+svm_test <- predict(SVM_model,test, probability=TRUE)
+head(svm_test)
+table(svm_test>0.5,test$Risk)
+
+
+roc_svm<-roc(test$Risk,svm_test)
+plot(roc_svm)
+
+plot(roc_svm, col = "blue")
+
+auc(roc_svm)
+
+# Accuracy 97.4%
+
+#Naive Bayes probability calculation in R
+library(naivebayes)
+library(caTools)
+model <- naiveBayes(Risk~ .,train)
+prob_nbtrain<-predict(model,train,type ="raw")[,2]
+prob_nbtest<-predict(model,test,type ="raw")[,2]
+head(prob_nbtrain)
+head(prob_nbtest)
+table(predicted=prob_nbtest>0.5,actual=test$Risk)
+
+roc_nb<-roc(test$Risk,prob_nbtest)
+plot(roc_nb)
+
+plot(roc_nb, col = "blue")
+
+auc(roc_nb)
+
+#Accuracy 93.56%
+
+```
+
+```{r,eval=FALSE}
+library(dplyr)
+names(data2)
+
+# correlation Check
+library(dplyr)
+attach(data2)
+cor_10<-cor(data2,Risk, method = "pearson") %>% 
+  tibble::as.tibble(rownames = "X_var")%>%
+  mutate(abs_cor = abs(V1)) %>% 
+  arrange(-abs_cor)   
+
+cor_10
+
+```
+
+```{r,eval=FALSE}
+
+data4<-subset(data2,select=c("Risk","Score","Score_MV","Score_B","Score_A","CONTROL_RISK",
+                             "RiSk_E","District_Loss","Sector_score"))
+as.factor(data4$Risk)
+
+
+sample = sample.split(data4,SplitRatio = 0.70) 
+train1=subset(data4,sample ==TRUE)
+test1=subset(data4, sample==FALSE)
+dim(test1)
+
+#probability with logistic regression
+library(MASS)
+glm_train<-glm(Risk~.,train1,family = 'binomial')
+prob_lgmtest<-predict(glm_train,test1,type = "response")
+table(prob_lgmtest>0.5,test1$Risk)
+
+
+roc_glm1<-roc(test1$Risk,prob_lgmtest)
+plot(roc_glm1)
+
+plot(roc_glm1, col = "blue")
+
+auc(roc_glm1)
+
+
+#Accuracy 95.75%
+
+#Random forest
+library(randomForest)
+
+# probability estimation
+Rf<- randomForest(Risk~.,train1)
+
+prob_rftrain<-predict(Rf,train1)
+prob_rftest<-predict(Rf,test1)
+table(prob_rftest>.5,test1$Risk)
+
+
+roc_rf1<-roc(test1$Risk,prob_rftest)
+plot(roc_rf1)
+
+plot(roc_rf1, col = "blue")
+
+auc(roc_rf1)
+
+#Accuracy 96.13%
+
+#SVM model with probability
+library(e1071)
+SVM_model<- svm(Risk~.,train1, probability=TRUE)
+svm_train <- predict(SVM_model,train1, probability=TRUE)
+head(svm_train)
+svm_test <- predict(SVM_model,test1, probability=TRUE)
+head(svm_test)
+table(svm_test>0.5,test1$Risk)
+
+
+roc_svm1<-roc(test1$Risk,svm_test)
+plot(roc_svm1)
+
+plot(roc_svm1, col = "blue")
+
+auc(roc_svm1)
+
+
+# Accuracy 95.75 %
+
+#Naive Bayes probability calculation in R
+library(naivebayes)
+library(caTools)
+model <- naiveBayes(Risk~ .,train1)
+prob_nbtrain<-predict(model,train1,type ="raw")[,2]
+prob_nbtest<-predict(model,test1,type ="raw")[,2]
+head(prob_nbtrain)
+head(prob_nbtest)
+table(predicted=prob_nbtest>0.5,actual=test1$Risk)
+
+
+
+#Accuracy 91.5%
+
+roc_nb1<-roc(test1$Risk,prob_nbtest)
+plot(roc_nb1)
+
+plot(roc_nb1, col = "blue")
+
+auc(roc_nb1)
+```
+
+
+# We executed four machine learning model for chi square test and correlation matrix. In chi square test we have choosen top 10 significance variable and in correlation matrix we have choosen just over 40% connected worth. With the assistance of chi square test we get most elevated accuaracy with logistic regression model is 97.85 with auc esteem 99.75% wheres from correlation matrix with randomForest model exactness is 96.13% with auc esteem 99.09%. Machine learning model selection is an iterative procedure, we can utilize lots of feature engineering techniques to improve exactness of accuracy,ensitivity, specificity and auc value, for instance, evacuating variable and making new variable, information scaling, bining methods and so forth.
+

@@ -1,0 +1,218 @@
+---
+title: "Remote Performance Task"
+author: "IBUR RAHMAN"
+date: "1/25/2020"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+```{r setup, include=FALSE, message=TRUE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r,echo=FALSE,message=FALSE}
+library("readxl")
+library(data.table)
+library(dplyr)
+library(GGally)
+```
+
+```{r, echo=FALSE,message=FALSE,warning=FALSE}
+a<- read_excel("EA Example Data.xlsx")
+b<-data.frame(a)
+names(b)
+head(b)
+str(b)
+summary(b)
+#sapply(b, function(x) sum(length(which(is.na(x)))))  
+#sapply(b, function(x) which(is.na(x)))
+```
+
+# **Data Cleansing **
+
+### ***I cheked name of columns, then cheked few rows what are the data.In our dataset, d_ell variable conatins mixed of number and character.Hence, data is wrong, because data must be same type(e.g either character or numeric) for single variable.Then, I checked number of NA values from dataset for each variable and figured out that student_id, post_test_score,pre_test_score, d_sped have 1,3,2,44 misssing value respectively. Next, I tried to chek which rows have missing values for the perticular variable and Cheked summary of data for checking mininmum, maximum values with quartile distribution. I figured out that pre_test_score has minimum value is -2.95 and maximum value is 41549 where mean value  only 857.29. It Seems to me that something wrong with data.Then, I read whole data and figured out that student id at 26 row is missing but when a closure look taken into data, I saw columns  values shifted single column for that rows. Programmatically I shifted all columns by one column to adjust dataset properly and if somthing happend with million  rows, automatically will be adjusted. After that I manipulated d_ell column where if d_ell is 0 or No took as No otherwise Yes.  When I read again data I saw variables called  post_test_score,pre_test_score data was character format. So, I converted character into numeric value with 2 decimal point.***
+
+```{r,message=FALSE,warning=FALSE}
+b$post_test_name1<-b$post_test_name
+b$post_test_name[is.na(b$student_id)]<-b$post_test_date[is.na(b$student_id)]
+b$post_test_date[is.na(b$student_id)]<-b$post_test_score[is.na(b$student_id)]
+b$post_test_score[is.na(b$student_id)]<-b$pre_test_name[is.na(b$student_id)]
+b$pre_test_name[is.na(b$student_id)]<-b$pre_test_date[is.na(b$student_id)]
+b$pre_test_date[is.na(b$student_id)]<-b$pre_test_score[is.na(b$student_id)]
+b$pre_test_score[is.na(b$student_id)]<-b$d_ell[is.na(b$student_id)]
+b$d_ell[is.na(b$student_id)]<-b$d_sped[is.na(b$student_id)]
+b$d_sped[is.na(b$student_id)]<-b$student_id[is.na(b$student_id)]
+b$student_id[is.na(b$student_id)] <-b$post_test_name1[is.na(b$student_id)]
+b$d_ell<-ifelse(b$d_ell=='0' | b$d_ell=='No','No','Yes')
+Relay_data<-subset(b,select=c(1,2,3,4,5,6,7,8,9))
+cols.num <- c("student_id","post_test_score","pre_test_score")
+Relay_data[cols.num] <- sapply(Relay_data[cols.num],as.numeric)
+round_df <- function(x, digits) {
+  numeric_columns <- sapply(x, mode) == 'numeric'
+  x[numeric_columns] <-  round(x[numeric_columns], digits)
+  x
+}
+
+EA_data<-round_df(Relay_data,2)
+
+``` 
+
+
+
+```{r,message=FALSE,warning=FALSE}
+sapply(Relay_data, class)
+head(EA_data)
+```
+
+### ***After adjusting data I cheked type of variable and summary of data. Type of data is okay, but pre_test_score minimum value is -2.95 maximum value is 231,but 75% values under 0.730 So data is not correct. Created boxplot and figured out that the pre_test_scor variable has two outliers greater than 200. Univariate and bivariates plots were created using the GGally R packages.***
+
+```{r,message=FALSE,warning=FALSE,fig.height=3,fig.width=5}
+
+summary(EA_data)
+boxplot(EA_data$pre_test_score)
+
+```
+
+```{r,message=FALSE,warning=FALSE,,fig.height=3.5,fig.width=7}
+names (EA_data)
+ggpairs(data=EA_data,
+        columns=c("post_test_score","pre_test_score","d_ell","d_sped"),
+        title="Summary Plot"
+)
+```
+
+
+
+## Question 1.
+***Please describe your observations on the example data attached, if your objective was to run an analysis to determine the effects that “pre_test_score”, “d_ell”, and “d_sped” have on “post_test_score”. You do not need to run any regressions on the data.***
+
+
+## Answer
+
+## Scatter Plot with post_test_score and pre_test_score
+
+
+```{r,message=FALSE,warning=FALSE,,fig.height=3,fig.width=5}
+
+library(ggplot2)
+ggplot(EA_data, aes(x=EA_data$post_test_score, y=EA_data$pre_test_score)) + 
+  geom_point()+
+  geom_smooth(method=lm)+xlab('post_test_score')+ylab('pre_test_score')+
+  ggtitle('Scatter Plot with post_test_score and pre_test_score')
+
+```
+
+### From the scatter plot above, there appears no apparent relationship between the post and pre score. Two outliers are obviuos from the plot. 
+
+## Box plot with post test score and d_ell
+
+```{r,message=FALSE,warning=FALSE,,fig.height=3,fig.width=5}
+
+
+ggplot(EA_data, aes(x =d_ell, y = post_test_score)) +
+  geom_boxplot()
+```
+
+###The median and variability in post test score in the "no" category are slighly higher than that of "yes' group.
+
+##  Box Plot with d_sped and post_test_score
+
+```{r,message=FALSE,warning=FALSE,fig.height=3,fig.width=5}
+ggplot(EA_data, aes(x =d_sped, y = post_test_score)) +
+  geom_boxplot()
+```
+
+###No meaning relationship between d_sped and post test scores can be drawn since the d_speed has lots of missing values (NA).
+
+
+## Question 2.
+
+***The table below contains coefficients from a linear-regression with post-test as the outcome variable (from a different data set than used above). Describe your observations about the table of coefficients.***
+
+### Answer:  
+
+### Tried to Comment on which one has positive and negative association with the post test score Calculate Z-score which coefficient/standard error. Statistically significant predictor will be the ones with Z-score greater than 1.96.
+
+```{r,message=FALSE,warning=FALSE}
+library(knitr)
+Lg_table<-data.frame(variable=c('pre_test_score','gender_male',
+                      'race_hispanic','race_asian','race_african_american',
+                      'race_native_american','race_missing','english_language_learner',
+                      'lunch_free','lunch_reduce','special_ed'),
+                     coefficient=c(0.824,0.031,-0.027,0.100,-0.087,
+                        0.048,0.133,-0.050,-0.153,0.150,-0.083),
+                     standard_Error=c(0.009,0.012,0.018,0.027,
+                      0.020,0.108,0.064,0.029,0.015,0.022,0.826))
+
+Lg_table$Z_Score<-Lg_table$coefficient/Lg_table$standard_Error
+
+kable(Lg_table, format = "markdown", digits = 3)
+```
+
+### Statistically significant predictor at 0.05 level will be the ones with Z-score greater than 1.96. From the table above, all the predictors are significant except race_hispanic, race_native_american, and english_language_leaner. 
+
+
+
+##Question 3. 
+
+***Describe how you would explain the meaning of the coefficient on lunch_free (eligible for a federal program that provides free school lunch) in the table above to a group of educators without a strong background in statistics.***
+
+
+### Answer:
+
+### For male students with same race, pre-test score, and are English language learner in special education but only differ by lunch free, the post test score on average reduces by 0.153 compared to those who did not have lunch free. This result reveals that lunch free might not be helpful to improve post test score.
+
+## Question 4.
+
+***What other factors not listed in the coefficient table above may affect a student’s post-test score?***
+
+###Answer:
+### Other potential covariates might be teacher student ratio, parent’s income, learning facilities, parental education, presence of trained teachers in the school, distance of a school, attendance rate, etc.
+
+
+## Question 5.
+***What role do you think data analytics should play in education in the United States?***
+
+
+### Answer:
+
+### With the help of data analytics, we can identify factors that impact education for policy maker to introduce intervention programs. For example, an analysis may reveal that, students are not able to complete college education due to tuition fees. A federal program like low interest loans maybe offered to interested students. - with the help of data analytics, school administrators can increase admission by targeting students with the highest chances of attending by looking into student population and academic track records and compare them with potential candidates.
+
+
+##Question 6.
+
+***In this brief example, imagine you have a data file with student test scores. Describe the steps you would take to (1) determine if a test score is valid, and if so, (2) determine whether the score should be categorized as low, medium, or high proficiency, given the following rules: valid test score range is 100-200, low-range cutoff is 130, and medium-range cutoff is 170. Answers to this question can be in English, pseudo-code, or actual code in any language.***
+
+## Answer:
+
+### firstly I determined if the test score is valid, I will write a program the delete all invalid entries if the test score if less than 100 or greater than 200 with the following
+
+```{r,warning=FALSE,message=FALSE}
+
+set.seed(1)
+sample_data<-as.numeric(sample(50:250,20,replace=T))
+new_data<-data.frame(student_test_scores=sample_data)
+head(new_data)
+
+new_data$Valid_invalid<-ifelse(new_data$student_test_scores>200 |
+                                 new_data$student_test_scores<100,'invalid','valid')
+new_data
+```
+
+
+###Secondary, I will create another variable called student_test_score_category (categorize valid score tests) Low=100-130; medium =131-170 ; and high=&gt;170 with the following r-code
+
+```{r, message=FALSE, warning=FALSE}
+valid_data<-new_data%>%filter(Valid_invalid=='valid')
+
+valid_data$student_test_score_category<-valid_data$student_test_scores
+valid_data$student_test_score_category[valid_data$student_test_scores<=130]<-'Low'
+valid_data$student_test_score_category[valid_data$student_test_scores<=170 &
+                                         valid_data$student_test_scores>130]<-'Medium'
+valid_data$student_test_score_category[valid_data$student_test_scores>170]<-'High'
+valid_data
+table(valid_data$student_test_score_category)
+
+```
+
